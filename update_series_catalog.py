@@ -13,13 +13,6 @@ import json
 def tname(tn):
     return tn.lower()
 
-def main():
-    config = json.load(open("config.json"))
-    con = MySQLdb.connect(**config)
-    cur = con.cursor()
-
-    db_UpdateSeriesCatalog_All(con, cur)
-
 # This function updates all entries in the 
 # SeriesCatalog by extracting the aggregate values
 # from the dataValues table and from related tables.
@@ -161,5 +154,44 @@ WHERE dv.SiteID = %(siteID)s
     return status
 
 if __name__ == "__main__":
-    main()
+    import getopt
+
+    if os.path.exists("config.json"):
+        config = json.load(open("config.json"))
+    else:
+        config = {}
+
+    opts, args = getopt.getopt(sys.argv[1:], "wh:d:u:p:", ["write", "host=", "passwd=", "db=", "user="])
+    write = False
+    for n,v in opts:
+        if n == "-h" or n == "--host":
+            config["host"] = v
+        if n == "-p" or n == "--passwd":
+            config["passwd"] = v
+        if n == "-d" or n == "--db":
+            config["db"] = v
+        if n == "-u" or n == "--user":
+            config["user"] = v
+        if n == "-w" or n == "--write":
+            write = True
+
+    if "passwd" not in config:
+        config["passwd"] = getpass.getpass("Password: ")
+    if "host" not in config:
+        config["host"] = raw_input("Host: ")
+    if "db" not in config:
+        config["db"] = raw_input("Database: ")
+    if "user" not in config:
+        config["user"] = raw_input("User: ")
+
+    if write:
+        json.dump(config, open("config.json.new", 'w'))
+        os.rename("config.json", "config.json.old")
+        os.rename("config.json.new", "config.json")
+        
+    con = MySQLdb.connect(**config)
+    cur = con.cursor()
+    db_UpdateSeriesCatalog_All(con, cur)
+    con.commit()
+
 
